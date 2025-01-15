@@ -226,7 +226,7 @@ def main():
                 "https://steamcommunity.com/groups/group2",
                 "https://steamcommunity.com/groups/group3",
                 "https://steamcommunity.com/groups/group4",
-                "https://steamcommunity.com/groups/group5",,
+                "https://steamcommunity.com/groups/group5",
             ]
 
             rest_group_urls = [
