@@ -20,7 +20,6 @@ logging.basicConfig(
 )
 
 def check_internet_connection():
-    """Function to check internet connection"""
     try:
         with contextlib.closing(socket.create_connection(("8.8.8.8", 53), timeout=3)):
             return True
@@ -28,7 +27,6 @@ def check_internet_connection():
         return False
 
 def wait_for_internet():
-    """Wait until internet connection is restored"""
     if not check_internet_connection():
         logging.warning("No internet connection. Waiting for reconnection...")
         print("No internet connection. Waiting for reconnection...")
