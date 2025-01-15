@@ -8,6 +8,7 @@
 - İlk 5 gruba günde bir kez yorum gönderir.
 - Geri kalan gruplara, çalıştırıldığı andan itibaren bir saat arayla yorum gönderir.
 - Kullanıcı dostu ve kolay yapılandırılabilir.
+- İnternet bağlantısı kopması halinde kendini beklemeye alır ve bağlantı yeniden sağlandığında kaldığı yerden devam eder.
 
 ## Gereksinimler
 - Python 3.8 veya üstü
