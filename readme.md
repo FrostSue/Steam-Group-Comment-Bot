@@ -9,6 +9,7 @@
 - Geri kalan gruplara, çalıştırıldığı andan itibaren bir saat arayla yorum gönderir.
 - Kullanıcı dostu ve kolay yapılandırılabilir.
 - İnternet bağlantısı kopması halinde kendini beklemeye alır ve bağlantı yeniden sağlandığında kaldığı yerden devam eder.
+- İngilizce ve Türkçe dil desteği.
 
 ## Gereksinimler
 - Python 3.8 veya üstü
@@ -51,15 +52,15 @@
 
 ## Kullanım
 
-1. Script dosyasındaki `first_group_urls` ve `rest_group_urls` listelerine yorum göndermek istediğiniz grup URL'lerini ekleyin.
-2. `comment_text` değişkenine gönderilecek yorum metnini yazın.
+1. Group-url.ini dosyasındaki `first_groups` ve `rest_groups` listelerine yorum göndermek istediğiniz grup URL'lerini ekleyin.
+2. steam_comment_bot.py dosyasındaki `comment_text` değişkenine gönderilecek yorum metnini yazın.
 3. Script'i çalıştırarak otomasyonu başlatın.
 
 ## Yapılandırma
 
 Zamanlama ve grup ayarlarını özelleştirmek için kodda şu bölümleri düzenleyebilirsiniz:
-- **`first_group_urls`**: İlk gruplar (günde bir kez yorum yapılır).
-- **`rest_group_urls`**: Diğer gruplar (1 saatlik aralıklarla yorum yapılır).
+- **`first_groups_`**: İlk gruplar (günde bir kez yorum yapılır).
+- **`rest_groups`**: Diğer gruplar (1 saatlik aralıklarla yorum yapılır).
 - **`comment_text`**: Gönderilecek yorum metni.
 
 ## Katkı Sağlama
