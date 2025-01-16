@@ -12,12 +12,44 @@ from datetime import datetime
 import socket
 import urllib.request
 import contextlib
+import configparser
+from translation import get_translation
 
 logging.basicConfig(
     filename='steam_bot.log',
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
+
+class LanguageSelector:
+    @staticmethod
+    def select_language():
+        while True:
+            try:
+                choice = input(get_translation("tr", "select_language"))
+                if choice == "1":
+                    return "tr"
+                elif choice == "2":
+                    return "en"
+                else:
+                    print(get_translation("tr", "invalid_choice"))
+            except ValueError:
+                print(get_translation("tr", "invalid_choice"))
+
+def load_group_urls(language):
+    try:
+        config = configparser.ConfigParser()
+        config.read('group-url.ini')
+        
+        first_groups = [url for key, url in config['first_groups'].items()]
+        rest_groups = [url for key, url in config['rest_groups'].items()]
+        
+        return first_groups, rest_groups
+    except Exception as e:
+        error_msg = get_translation(language, "config_error", str(e))
+        logging.error(error_msg)
+        print(error_msg)
+        raise
 
 def check_internet_connection():
     try:
@@ -26,18 +58,19 @@ def check_internet_connection():
     except:
         return False
 
-def wait_for_internet():
+def wait_for_internet(language):
     if not check_internet_connection():
-        logging.warning("No internet connection. Waiting for reconnection...")
-        print("No internet connection. Waiting for reconnection...")
+        logging.warning(get_translation(language, "no_internet"))
+        print(get_translation(language, "no_internet"))
         while not check_internet_connection():
             time.sleep(5)
-        logging.info("Internet connection restored!")
-        print("Internet connection restored!")
+        logging.info(get_translation(language, "internet_restored"))
+        print(get_translation(language, "internet_restored"))
 
 class SteamGroupBot:
-    def __init__(self):
+    def __init__(self, language):
         self.driver = None
+        self.language = language
         self.setup_driver()
         self.last_connection_check = 0
         self.connection_check_interval = 60
@@ -47,38 +80,39 @@ class SteamGroupBot:
             chrome_options = webdriver.ChromeOptions()
             chrome_options.add_experimental_option("debuggerAddress", "127.0.0.1:9222")
             self.driver = webdriver.Chrome(options=chrome_options)
-            logging.info("Chrome browser started successfully.")
-            print("Chrome browser started successfully.")
+            logging.info(get_translation(self.language, "browser_start"))
+            print(get_translation(self.language, "browser_start"))
         except Exception as e:
-            logging.error(f"Error starting browser: {str(e)}")
-            print(f"Error starting browser: {str(e)}")
+            error_msg = get_translation(self.language, "browser_error", str(e))
+            logging.error(error_msg)
+            print(error_msg)
             raise
 
     def check_connection_if_needed(self):
-        """Check connection only if enough time has passed since last check"""
         current_time = time.time()
         if current_time - self.last_connection_check >= self.connection_check_interval:
-            wait_for_internet()
+            wait_for_internet(self.language)
             self.last_connection_check = current_time
 
     def login_check(self):
         try:
-            logging.info("Checking Steam login...")
-            print("Checking Steam login...")
+            logging.info(get_translation(self.language, "login_check"))
+            print(get_translation(self.language, "login_check"))
             self.check_connection_if_needed()
             
             self.driver.get("https://steamcommunity.com")
             time.sleep(random.uniform(4, 6))
 
             if "login" in self.driver.current_url.lower():
-                logging.warning("Login required!")
-                print("Login required!")
+                logging.warning(get_translation(self.language, "login_required"))
+                print(get_translation(self.language, "login_required"))
                 return False
             return True
 
         except Exception as e:
-            logging.error(f"Login check error: {str(e)}")
-            print(f"Login check error: {str(e)}")
+            error_msg = get_translation(self.language, "login_error", str(e))
+            logging.error(error_msg)
+            print(error_msg)
             return False
 
     def post_comment(self, group_url, comment_text, max_retries=3):
@@ -86,20 +120,20 @@ class SteamGroupBot:
             try:
                 self.check_connection_if_needed()
                 
-                logging.info(f"\nNavigating to group: {group_url}")
-                print(f"\nNavigating to group: {group_url}")
+                logging.info(get_translation(self.language, "going_to_group", group_url))
+                print(get_translation(self.language, "going_to_group", group_url))
                 self.driver.get(group_url)
                 time.sleep(random.uniform(4, 6))
 
-                logging.info("Searching for comment area...")
-                print("Searching for comment area...")
+                logging.info(get_translation(self.language, "searching_comment"))
+                print(get_translation(self.language, "searching_comment"))
                 comment_box = WebDriverWait(self.driver, 10).until(
                     EC.presence_of_element_located(
                         (By.CSS_SELECTOR, "textarea.commentthread_textarea")
                     )
                 )
-                logging.info("Comment area found.")
-                print("Comment area found.")
+                logging.info(get_translation(self.language, "comment_found"))
+                print(get_translation(self.language, "comment_found"))
 
                 self.driver.execute_script("arguments[0].scrollIntoView(true);", comment_box)
                 time.sleep(random.uniform(1, 2))
@@ -115,7 +149,7 @@ class SteamGroupBot:
                 comment_area_id = comment_box.get_attribute("id")
                 thread_id = comment_area_id.replace("_textarea", "")
                 submit_button_id = f"{thread_id}_submit"
-
+                
                 post_button = WebDriverWait(self.driver, 10).until(
                     EC.element_to_be_clickable(
                         (By.ID, submit_button_id)
@@ -123,7 +157,7 @@ class SteamGroupBot:
                 )
 
                 if not post_button.is_displayed():
-                    raise Exception("Post button not visible")
+                    raise Exception("Post button is not visible.")
 
                 self.driver.execute_script("arguments[0].scrollIntoView(true);", post_button)
                 time.sleep(random.uniform(1, 2))
@@ -140,13 +174,14 @@ class SteamGroupBot:
                     "div.commentthread_comment.responsive_body_text")) > 0
                 )
                 
-                logging.info(f"Comment successfully posted! Group: {group_url}")
-                print(f"Comment successfully posted! Group: {group_url}")
+                logging.info(get_translation(self.language, "comment_success", group_url))
+                print(get_translation(self.language, "comment_success", group_url))
                 return True
 
             except Exception as e:
-                logging.error(f"Comment posting error (Attempt {attempt + 1}/{max_retries}): {str(e)}")
-                print(f"Comment posting error (Attempt {attempt + 1}/{max_retries}): {str(e)}")
+                error_msg = get_translation(self.language, "comment_error", attempt + 1, max_retries, str(e))
+                logging.error(error_msg)
+                print(error_msg)
                 
                 if attempt == max_retries - 1:
                     self.check_connection_if_needed()
@@ -158,33 +193,34 @@ def job(bot, group_url, comment_text):
     try:
         bot.post_comment(group_url, comment_text)
     except Exception as e:
-        logging.error(f"Job error - Group: {group_url}, Error: {str(e)}")
-        print(f"Job error - Group: {group_url}, Error: {str(e)}")
+        error_msg = get_translation(bot.language, "task_error", group_url, str(e))
+        logging.error(error_msg)
+        print(error_msg)
 
 def post_to_first_groups(bot, first_group_urls, comment_text):
-    """Post to first groups"""
     for group_url in first_group_urls:
         try:
             job(bot, group_url, comment_text)
             time.sleep(random.uniform(30, 60))
         except Exception as e:
-            logging.error(f"First group posting error - Group: {group_url}, Error: {str(e)}")
-            print(f"First group posting error - Group: {group_url}, Error: {str(e)}")
+            error_msg = get_translation(bot.language, "first_group_error", group_url, str(e))
+            logging.error(error_msg)
+            print(error_msg)
 
 def post_to_rest_groups(bot, rest_group_urls, comment_text):
-    """Post to remaining groups"""
     for group_url in rest_group_urls:
         try:
             job(bot, group_url, comment_text)
             time.sleep(random.uniform(30, 60))
         except Exception as e:
-            logging.error(f"Other groups posting error - Group: {group_url}, Error: {str(e)}")
-            print(f"Other groups posting error - Group: {group_url}, Error: {str(e)}")
+            error_msg = get_translation(bot.language, "other_groups_error", group_url, str(e))
+            logging.error(error_msg)
+            print(error_msg)
 
 def schedule_tasks(bot, first_group_urls, rest_group_urls, comment_text):
     try:
-        logging.info("Posting to first groups...")
-        print("Posting to first groups...")
+        logging.info(get_translation(bot.language, "first_groups_posting"))
+        print(get_translation(bot.language, "first_groups_posting"))
         
         post_to_first_groups(bot, first_group_urls, comment_text)
         
@@ -192,63 +228,53 @@ def schedule_tasks(bot, first_group_urls, rest_group_urls, comment_text):
         schedule_time = f"{current_time.hour:02d}:{current_time.minute:02d}"
         schedule.every().day.at(schedule_time).do(post_to_first_groups, bot, first_group_urls, comment_text)
         
-        logging.info("Posting to other groups...")
-        print("Posting to other groups...")
+        logging.info(get_translation(bot.language, "rest_groups_posting"))
+        print(get_translation(bot.language, "rest_groups_posting"))
         post_to_rest_groups(bot, rest_group_urls, comment_text)
         
         schedule.every(1).hours.do(post_to_rest_groups, bot, rest_group_urls, comment_text)
 
-        logging.info("All schedules successfully set.")
-        print("All schedules successfully set.")
+        logging.info(get_translation(bot.language, "schedule_success"))
+        print(get_translation(bot.language, "schedule_success"))
 
     except Exception as e:
-        logging.error(f"Schedule tasks general error: {str(e)}")
-        print(f"Schedule tasks general error: {str(e)}")
+        error_msg = get_translation(bot.language, "schedule_error", str(e))
+        logging.error(error_msg)
+        print(error_msg)
 
 def main():
+    language = LanguageSelector.select_language()
+    
     while True:
         try:
-            logging.info("Starting bot...")
-            print("Starting bot...")
+            logging.info(get_translation(language, "bot_starting"))
+            print(get_translation(language, "bot_starting"))
             
-            wait_for_internet()  
-            bot = SteamGroupBot()
+            wait_for_internet(language)
+            bot = SteamGroupBot(language)
 
             if not bot.login_check():
-                logging.error("Not logged into Steam! Please log into your Steam account in Chrome.")
-                print("Not logged into Steam! Please log into your Steam account in Chrome.")
+                logging.error(get_translation(language, "no_login"))
+                print(get_translation(language, "no_login"))
                 return
 
-            first_group_urls = [
-                "https://steamcommunity.com/groups/group1",
-                "https://steamcommunity.com/groups/group2",
-                "https://steamcommunity.com/groups/group3",
-                "https://steamcommunity.com/groups/group4",
-                "https://steamcommunity.com/groups/group5",
-            ]
+            first_groups, rest_groups = load_group_urls(language)
 
-            rest_group_urls = [
-                "https://steamcommunity.com/groups/group6",
-                "https://steamcommunity.com/groups/group7",
-                "https://steamcommunity.com/groups/group8",
-                "https://steamcommunity.com/groups/group9",
-                "https://steamcommunity.com/groups/group10",
-            ]
+            comment_text = "YOUR COMMENT HERE!"
 
-            comment_text = "Your comment text here!"
-
-            schedule_tasks(bot, first_group_urls, rest_group_urls, comment_text)
-            logging.info("Scheduling set. Bot will run according to defined schedules.")
-            print("Scheduling set. Bot will run according to defined schedules.")
+            schedule_tasks(bot, first_groups, rest_groups, comment_text)
+            logging.info(get_translation(language, "schedule_set"))
+            print(get_translation(language, "schedule_set"))
 
             while True:
                 schedule.run_pending()
                 time.sleep(1)
 
         except Exception as e:
-            logging.error(f"Error in main program: {str(e)}")
-            print(f"Error in main program: {str(e)}")
-            print("Restarting program...")
+            error_msg = get_translation(language, "main_error", str(e))
+            logging.error(error_msg)
+            print(error_msg)
+            print(get_translation(language, "restarting"))
             time.sleep(5)
 
 if __name__ == "__main__":
